@@ -1,92 +1,223 @@
 <!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>おにぎりキャッチ</title>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>鬼王バスターズ</title>
 <style>
-:root{--bg1:#ffe9b8;--bg2:#ffb36b;--ink:#4a2a12;--card:#fffaf0;--accent:#e8452c;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg1:#2b1b4a;--bg2:#6a3a7a;--ink:#fff1dc;--card:#3a2560;--accent:#ff7a59;color-scheme:dark}}
-:root[data-theme="dark"]{--bg1:#2b1b4a;--bg2:#6a3a7a;--ink:#fff1dc;--card:#3a2560;--accent:#ff7a59;color-scheme:dark}
-html,body{height:100%;margin:0;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;font-family:"Hiragino Sans","Noto Sans JP",sans-serif;background:var(--bg1);color:var(--ink)}
-#wrap{position:relative;width:100%;height:100%;background:linear-gradient(var(--bg1),var(--bg2))}
-canvas{display:block;width:100%;height:100%}
-#ov{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
-#card{background:var(--card);padding:24px 36px;border-radius:24px;text-align:center;box-shadow:0 8px 30px #0004;max-width:80%}
-#card h1{margin:0 0 8px;font-size:34px}
-#card p{margin:6px 0;font-size:17px;line-height:1.5}
-#card b{display:inline-block;margin-top:10px;padding:12px 32px;border-radius:999px;background:var(--accent);color:#fff;font-size:20px}
-</style>
-</head>
-<body>
-<div id="wrap">
-<canvas id="cv"></canvas>
-<div id="ov"><div id="card">
-<h1>🍙 おにぎりキャッチ 🧺</h1>
-<p>指でかごを左右に動かして<br>🍙(+1) 🍣(+5) をキャッチ!<br>💣 にあたるとライフが減るよ</p>
-<p id="best"></p>
-<b>タップでスタート</b>
-</div></div>
+html,body{margin:0;height:100%;background:#0b0618;color:#fff;font-family:"Hiragino Sans","Yu Gothic",system-ui,sans-serif;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+canvas{display:block}
+#hud{position:fixed;inset:0;pointer-events:none}
+#boss{position:absolute;top:calc(10px + env(safe-area-inset-top,0px));left:22%;right:22%;height:18px;background:#0009;border:2px solid #ffd84a;border-radius:3px;overflow:hidden}
+#bossf{height:100%;width:100%;background:linear-gradient(#ff7a5a,#c0152a)}
+#bossn{position:absolute;top:calc(32px + env(safe-area-inset-top,0px));width:100%;text-align:center;font-size:13px;letter-spacing:.2em;text-shadow:0 1px 3px #000}
+#pl{position:absolute;left:calc(12px + env(safe-area-inset-left,0px));top:calc(12px + env(safe-area-inset-top,0px));font-size:14px;line-height:1.6;text-shadow:0 1px 3px #000}
+#room{position:absolute;right:calc(12px + env(safe-area-inset-right,0px));top:calc(12px + env(safe-area-inset-top,0px));font-size:14px;text-align:right;text-shadow:0 1px 3px #000}
+#msg{position:absolute;top:36%;width:100%;text-align:center;font-size:48px;font-weight:900;text-shadow:0 3px 10px #000;white-space:pre-line}
+#go{position:absolute;top:60%;left:50%;transform:translateX(-50%);pointer-events:auto;display:none}
+button{font:inherit;font-weight:700;font-size:18px;color:#1a0a0a;background:#ffd84a;border:0;border-radius:6px;padding:12px 28px;margin:6px}
+#stickz{position:absolute;left:0;bottom:0;width:48%;height:62%;pointer-events:auto}
+#base{position:fixed;display:none;width:120px;height:120px;border-radius:50%;border:3px solid #fff6;background:#fff1}
+#knob{position:absolute;left:35px;top:35px;width:50px;height:50px;border-radius:50%;background:#fffa}
+.b{position:absolute;pointer-events:auto;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;border:3px solid #fff8;background:#0006;overflow:hidden;text-align:center}
+.b *{pointer-events:none}.b b{position:relative;line-height:1.15}.b small{font-size:12px;font-weight:600}
+.cd{position:absolute;left:0;bottom:0;width:100%;height:0;background:#000c}
+#atk{right:calc(26px + env(safe-area-inset-right,0px));bottom:calc(26px + env(safe-area-inset-bottom,0px));width:116px;height:116px;background:#d01c3a99;font-size:22px}
+#skill{right:calc(158px + env(safe-area-inset-right,0px));bottom:calc(30px + env(safe-area-inset-bottom,0px));width:92px;height:92px;background:#c8981a99;font-size:17px}
+#roll{right:calc(70px + env(safe-area-inset-right,0px));bottom:calc(160px + env(safe-area-inset-bottom,0px));width:84px;height:84px;font-size:17px}
+.hp{width:160px;height:11px;background:#0009;border:1px solid #fff9;border-radius:2px}.hp i{display:block;height:100%}
+#menu{position:fixed;inset:0;background:radial-gradient(#2a1450,#0b0618);display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+#menu h1{font-size:44px;margin:0 0 4px;letter-spacing:.15em;color:#ffd84a}
+#menu p{margin:0 0 18px;color:#cbb;font-size:14px}
+#code{font:inherit;font-size:20px;width:110px;text-align:center;padding:10px;border-radius:6px;border:0}
+#st{min-height:22px;color:#ff9;font-size:14px}
+</style></head><body>
+<div id="hud">
+ <div id="boss"><div id="bossf"></div></div><div id="bossn">鬼王</div>
+ <div id="pl"></div><div id="room"></div><div id="msg"></div>
+ <button id="go"></button>
+ <div id="stickz"></div><div id="base"><div id="knob"></div></div>
+ <div id="roll" class="b"><span class="cd" id="c-roll"></span><b>回避</b></div><div id="skill" class="b"><span class="cd" id="c-skill"></span><b>技<br><small id="sn"></small></b></div><div id="atk" class="b"><span class="cd" id="c-atk"></span><b>攻撃</b></div>
 </div>
+<div id="menu">
+ <h1>鬼王バスターズ</h1><p>弾幕をかわして、鬼王を倒せ。最大4人で協力。</p>
+ <button id="solo">ひとりで遊ぶ</button>
+ <button id="host">部屋を作る</button>
+ <div><input id="code" inputmode="numeric" maxlength="4" placeholder="部屋コード"><button id="join">入る</button></div>
+ <div id="st"></div>
+ <p style="margin-top:18px">移動: WASD・矢印 / スティック　攻撃: Space長押し　技: E　回避: Shift</p>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
 <script>
-const cv=document.getElementById('cv'),ctx=cv.getContext('2d'),ov=document.getElementById('ov'),card=document.getElementById('card');
-let W,H,dpr;
-function resize(){dpr=window.devicePixelRatio||1;W=cv.clientWidth;H=cv.clientHeight;cv.width=W*dpr;cv.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0)}
-addEventListener('resize',resize);resize();
+const $=id=>document.getElementById(id),R=24,f2=x=>Math.round(x*100)/100;
+const COL=[0xff5a5a,0x5aa8ff,0x5aff8a,0xffd84a],CSS=['#ff5a5a','#5aa8ff','#5aff8a','#ffd84a'];
+let mode='menu',myslot=0,G=null,peer=null,conns=[],hconn=null,snap=null,snapT=0;
 
-let best=0;
-try{best=+localStorage.getItem('onigiri-best')||0}catch(e){}
-const bestEl=document.getElementById('best');
-function showBest(){bestEl.textContent=best?'ハイスコア: '+best:''}showBest();
+/* ---------- 3D ---------- */
+const ren=new THREE.WebGLRenderer({antialias:true});ren.setPixelRatio(Math.min(devicePixelRatio,2));document.body.prepend(ren.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x0b0618);scene.fog=new THREE.Fog(0x0b0618,45,90);
+const cam=new THREE.PerspectiveCamera(50,1,.1,200);cam.position.set(0,31,23);cam.lookAt(0,0,3);
+scene.add(new THREE.AmbientLight(0x9988bb,1.2));const dl=new THREE.DirectionalLight(0xffffff,1.5);dl.position.set(10,30,12);scene.add(dl);
+function rs(){ren.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.fov=cam.aspect<1.2?70:50;cam.updateProjectionMatrix()}addEventListener('resize',rs);rs();
+const M=(g,c,o)=>new THREE.Mesh(g,new THREE.MeshStandardMaterial({color:c,...o}));
+const MB=(g,c,o)=>new THREE.Mesh(g,new THREE.MeshBasicMaterial({color:c,transparent:true,depthWrite:false,...o}));
+const flat=(g,c,op)=>{const m=MB(g,c,{opacity:op});m.rotation.x=-Math.PI/2;m.position.y=.06;return m};
+const floor=M(new THREE.CircleGeometry(R,64),0x1d1236);floor.rotation.x=-Math.PI/2;scene.add(floor);
+const edge=flat(new THREE.RingGeometry(R-.35,R,64),0xa070ff,1);scene.add(edge);
+for(const r of[8,16]){scene.add(flat(new THREE.RingGeometry(r-.05,r,64),0x5a3a9a,.5))}
+// ボス
+const bossG=new THREE.Group(),bodyM=M(new THREE.SphereGeometry(3,28,18),0xb0203a);bodyM.position.y=3.2;bossG.add(bodyM);
+for(const s of[-1,1]){const h=M(new THREE.ConeGeometry(.7,2.4,10),0xf5e6b0);h.position.set(s*1.5,6.2,0);h.rotation.z=-s*.35;bossG.add(h);
+ const e=M(new THREE.SphereGeometry(.55,12,8),0xffffff,{emissive:0xffee88});e.position.set(s*1.1,3.9,2.55);bossG.add(e);
+ const pu=M(new THREE.SphereGeometry(.25,8,6),0x000000);pu.position.set(s*1.1,3.9,3.05);bossG.add(pu);
+ const ar=M(new THREE.SphereGeometry(.9,10,8),0x901830);ar.position.set(s*3,2.6,1);bossG.add(ar)}
+const mouth=M(new THREE.BoxGeometry(1.8,.4,.3),0x200008);mouth.position.set(0,2.6,2.9);bossG.add(mouth);scene.add(bossG);
+// プレイヤー
+const pm=[];for(let i=0;i<4;i++){const g=new THREE.Group(),b=M(new THREE.CapsuleGeometry(.5,.9,4,10),COL[i]);b.position.y=1;g.add(b);
+ const e=M(new THREE.SphereGeometry(.12,6,6),0x000000);e.position.set(-.2,1.5,.45);g.add(e);const e2=e.clone();e2.position.x=.2;g.add(e2);
+ const mk=M(new THREE.ConeGeometry(.35,.7,8),0xffffff,{emissive:0xffffff});mk.rotation.x=Math.PI;mk.position.y=3;g.add(mk);g.mk=mk;g.body=b;g.visible=false;scene.add(g);const sw=new THREE.Group(),sec=flat(new THREE.CircleGeometry(1,20,-1.2,2.4),0xffffff,.7),circ=flat(new THREE.CircleGeometry(1,28),0x5aff8a,.5);sw.add(sec,circ);sw.sec=sec;sw.circ=circ;sw.visible=false;scene.add(sw);g.sw=sw;pm.push(g)}
+const mkE=[
+ ()=>{const m=MB(new THREE.SphereGeometry(.5,10,8),0xff3df0);m.position.y=.9;return m},
+ ()=>{const m=MB(new THREE.SphereGeometry(.3,8,6),0xffffff);m.position.y=1;return m},
+ ()=>{const g=new THREE.Group();g.add(flat(new THREE.RingGeometry(.94,1,48),0xff3030,.9));g.inner=flat(new THREE.CircleGeometry(1,48),0xff3030,.4);g.add(g.inner);return g},
+ ()=>flat(new THREE.RingGeometry(.93,1,64),0xff9a30,.9),
+ ()=>{const g=new THREE.Group();for(const o of[.2,.5]){const p=flat(new THREE.PlaneGeometry(1,1),0xff3030,o);p.position.x=20;p.scale.set(40,5,1);g.add(p);if(o==.5)g.fill=p}return g}];
+const em=[[],[],[],[],[]];
 
-let running=false,items=[],pops=[],px=0,tx=0,score=0,lives=3,combo=0,t=0,spawn=0,last=0,shake=0;
-const TYPES=[{e:'🍙',w:70,pts:1},{e:'🍣',w:12,pts:5},{e:'💣',w:18,pts:0,bomb:true}];
+/* ---------- 入力 ---------- */
+const keys={},stk={x:0,y:0},ctl={r:0,atk:0,s:0},cf={x:0,z:-1};let jid=null,jo=null;
+addEventListener('keydown',e=>{if(e.repeat)return;keys[e.code]=1;if(e.code=='ShiftLeft'||e.code=='ShiftRight')ctl.r=1;if(e.code=='KeyE')ctl.s=1;if(e.code=='Space')e.preventDefault()});
+addEventListener('keyup',e=>keys[e.code]=0);
+const sz=$('stickz'),base=$('base'),knob=$('knob');
+const mvS=e=>{if(e.pointerId!==jid)return;let dx=e.clientX-jo.x,dy=e.clientY-jo.y,l=Math.hypot(dx,dy);if(l>55){dx*=55/l;dy*=55/l}stk.x=dx/55;stk.y=dy/55;knob.style.transform=`translate(${dx}px,${dy}px)`};
+sz.onpointerdown=e=>{jid=e.pointerId;sz.setPointerCapture(jid);jo={x:e.clientX,y:e.clientY};base.style.cssText=`display:block;left:${e.clientX-60}px;top:${e.clientY-60}px`;mvS(e)};
+sz.onpointermove=mvS;sz.onpointerup=sz.onpointercancel=()=>{jid=null;stk.x=stk.y=0;base.style.display='none';knob.style.transform=''};
+$('atk').onpointerdown=e=>{ctl.atk=1;e.target.setPointerCapture(e.pointerId)};$('atk').onpointerup=$('atk').onpointercancel=()=>ctl.atk=0;
+$('roll').onpointerdown=()=>ctl.r=1;$('skill').onpointerdown=()=>ctl.s=1;
+function getIn(){const k=keys,sx=(k.KeyD||k.ArrowRight?1:0)-(k.KeyA||k.ArrowLeft?1:0)+stk.x,fy=(k.KeyW||k.ArrowUp?1:0)-(k.KeyS||k.ArrowDown?1:0)-stk.y;
+ return{mx:cf.x*fy-cf.z*sx,mz:cf.z*fy+cf.x*sx,a:(k.Space||ctl.atk)?1:0}}
 
-function pick(){let r=Math.random()*100;for(const k of TYPES){if((r-=k.w)<0)return k}return TYPES[0]}
-function start(){items=[];pops=[];score=0;lives=3;combo=0;t=0;spawn=0;px=tx=W/2;running=true;ov.style.display='none';last=performance.now();requestAnimationFrame(loop)}
-function end(){running=false;if(score>best){best=score;try{localStorage.setItem('onigiri-best',best)}catch(e){}}
-card.innerHTML='<h1>ゲームオーバー</h1><p>スコア: <b style="all:unset;font-size:30px;font-weight:bold">'+score+'</b></p><p>'+(score>=best&&score>0?'🎉 ハイスコア更新!':'ハイスコア: '+best)+'</p><b>もう一回</b>';
-setTimeout(()=>{ov.style.display='flex';ov.dataset.ready=1},600)}
+/* ---------- シミュレーション(ホスト側) ---------- */
+const ROLE=[{n:'剣士',s:'大斬り',cd:5},{n:'弓使い',s:'遠矢',cd:4},{n:'僧侶',s:'癒しの陣',cd:9},{n:'槍使い',s:'突き',cd:6}],ACD=.45,RCD=1.1;
+function initG(){G={state:'lobby',t:0,ents:[],boss:{x:0,z:0,hp:1,max:1,f:0,ph:0,cd:3,at:null,last:-1,lock:0,stop:0,slow:0},
+ pl:[0,1,2,3].map(i=>({slot:i,on:i==0,x:-6+i*4,z:12,hp:100,inv:0,roll:0,rcd:0,acd:0,scd:0,sw:0,swr:0,swk:0,aim:0,fa:-1.57,down:0,rev:0,fx:0,fz:-1,rx:0,rz:-1,in:{mx:0,mz:0,a:0,r:0,s:0}}))}}
+function startGame(){const g=G,B=g.boss,n=g.pl.filter(p=>p.on).length;g.ents=[];g.t=0;B.max=B.hp=700*n+300;B.x=B.z=-4;B.cd=3;B.at=null;B.last=-1;B.lock=B.stop=B.slow=0;
+ let i=0;for(const p of g.pl)if(p.on){const a=i++/n*6.283+1.2;Object.assign(p,{x:Math.cos(a)*14,z:Math.sin(a)*14,hp:100,inv:1,roll:0,rcd:0,acd:0,scd:0,sw:0,down:0,rev:0})}
+ g.state='play'}
+function hurt(p,d){if(p.inv>0||p.roll>0||p.down)return 0;p.hp-=d;p.inv=1;if(p.hp<=0){p.hp=0;p.down=1;p.rev=0}return 1}
+const alive=()=>G.pl.filter(p=>p.on&&!p.down),push=e=>G.ents.push(e);
+const ATK=[
+ ()=>{const B=G.boss,n=B.ph?2:1;let t=0,k=0,w=0;B.stop=1;return dt=>{t+=dt;
+  if(w<n&&t>=w*1.5){w++;push({k:2,x:B.x,z:B.z,r:7,t:0,d:.9,nd:1})}
+  if(k<n&&t>=k*1.5+.9){k++;push({k:3,x:B.x,z:B.z,r:2,v:9+B.ph*2.5,hit:{}})}
+  return t>n*1.5+.3}},
+ ()=>{const B=G.boss,W=1+B.ph,d=Math.max(.7,1.3-B.ph*.2);let t=0,w=0;const sp=()=>{w++;for(const p of alive())push({k:2,x:p.x,z:p.z,r:4.2,t:0,d});for(let i=0;i<B.ph*2;i++){const a=Math.random()*6.283,r=Math.random()*(R-4);push({k:2,x:Math.cos(a)*r,z:Math.sin(a)*r,r:4.2,t:0,d})}};
+  return dt=>{t+=dt;if(w<W&&t>=w*(d+.3))sp();return t>=W*(d+.3)+.2}},
+ ()=>{const B=G.boss,A=alive(),tg=A[(Math.random()*A.length)|0]||{x:5,z:5},a=Math.atan2(tg.z-B.z,tg.x-B.x),d=Math.max(.6,1.1-B.ph*.15),e={k:4,x:B.x,z:B.z,a,t:0};push(e);let t=0,s=0;B.lock=1;B.f=a;
+  return dt=>{t+=dt;if(s==0){e.t=Math.min(1,t/d);if(t>=d){s=1;e.dead=1}}
+   else if(s==1){B.x+=Math.cos(a)*38*dt;B.z+=Math.sin(a)*38*dt;for(const p of alive())if(Math.hypot(p.x-B.x,p.z-B.z)<3.4)hurt(p,40);if(Math.hypot(B.x,B.z)>R-3){s=2;t=0}}
+   else if(s==2){if(t>.5)s=3}
+   else{const q=Math.hypot(B.x,B.z);if(q<R-6)return 1;B.x-=B.x/q*14*dt;B.z-=B.z/q*14*dt}}},
+ ()=>{const B=G.boss,arms=2+B.ph,sp=9+B.ph;B.slow=1;let t=0,e=0,a=0;return dt=>{t+=dt;e+=dt;while(e>.09){e-=.09;a+=(t<2.4?.33:-.33);for(let i=0;i<arms;i++){const q=a+i*6.283/arms;push({k:0,x:B.x,z:B.z,vx:Math.cos(q)*sp,vz:Math.sin(q)*sp,dm:9})}}return t>4.8}},
+ // 強攻撃: 跳びかかり叩きつけ(予兆が長く、大ダメージ)
+ ()=>{const B=G.boss,A=alive(),tg=A[(Math.random()*A.length)|0]||{x:0,z:0},d=Math.max(.9,1.7-B.ph*.25),tx=tg.x,tz=tg.z;push({k:2,x:tx,z:tz,r:9,t:0,d,dm:55});B.lock=1;let t=0,f=0;
+  return dt=>{t+=dt;B.f=Math.atan2(tz-B.z,tx-B.x);if(t<d){const q=Math.min(1,dt*3.5);B.x+=(tx-B.x)*q;B.z+=(tz-B.z)*q}
+   else if(!f){f=1;B.x=tx;B.z=tz;if(B.ph)push({k:3,x:tx,z:tz,r:2,v:12,hit:{}})}return t>d+.7}},
+ // 遠距離攻撃: 各プレイヤーへの扇状弾
+ ()=>{const B=G.boss;B.stop=1;let t=0,k=0;return dt=>{t+=dt;if(k<3&&t>=.7+k*.6){k++;for(const p of alive()){const a=Math.atan2(p.z-B.z,p.x-B.x),m=2+B.ph*2;for(let i=-m;i<=m;i++){const q=a+i*.2;push({k:0,x:B.x,z:B.z,vx:Math.cos(q)*15,vz:Math.sin(q)*15,dm:14})}}}return t>3}}];
+function step(dt){const g=G;if(g.state!=='play')return;const B=g.boss,P=g.pl.filter(p=>p.on),A=P.filter(p=>!p.down);
+ B.ph=B.hp/B.max>.66?0:B.hp/B.max>.33?1:2;
+ for(const p of P){p.inv=Math.max(0,p.inv-dt);p.rcd-=dt;p.acd-=dt;p.scd-=dt;p.sw=Math.max(0,p.sw-dt*4);
+  if(p.down){const n=A.filter(q=>Math.hypot(q.x-p.x,q.z-p.z)<3).length;p.rev=Math.max(0,p.rev+(n?dt:-dt*.5));if(p.rev>=2){p.down=0;p.hp=40;p.inv=2;p.rev=0}p.in.s=0;continue}
+  let mx=p.in.mx,mz=p.in.mz,l=Math.hypot(mx,mz);if(l>1){mx/=l;mz/=l;l=1}
+  if(l>.15){p.fx=mx/l;p.fz=mz/l;p.fa=Math.atan2(mz,mx)}
+  if(p.in.r&&p.rcd<=0&&p.roll<=0){p.roll=.32;p.rcd=RCD;p.rx=p.fx;p.rz=p.fz}p.in.r=0;
+  if(p.roll>0){p.roll-=dt;p.x+=p.rx*20*dt;p.z+=p.rz*20*dt}else{p.x+=mx*(p.acd>ACD-.12?4:9)*dt;p.z+=mz*(p.acd>ACD-.12?4:9)*dt}
+  let d=Math.hypot(p.x,p.z);if(d>R-1){p.x*=(R-1)/d;p.z*=(R-1)/d}
+  d=Math.hypot(p.x-B.x,p.z-B.z);if(d<3.4&&d>0){p.x=B.x+(p.x-B.x)/d*3.4;p.z=B.z+(p.z-B.z)/d*3.4}
+  const bd=Math.hypot(B.x-p.x,B.z-p.z)||1,ax=(B.x-p.x)/bd,az=(B.z-p.z)/bd,aim=Math.atan2(az,ax);
+  if(p.in.a&&p.acd<=0&&p.roll<=0){p.acd=ACD;p.sw=1;p.swr=3.4;p.swk=0;p.aim=aim;p.fa=aim;if(bd<5.8)B.hp-=6}
+  if(p.in.s&&p.scd<=0&&p.roll<=0){p.scd=ROLE[p.slot].cd;p.aim=aim;p.fa=aim;p.sw=1;
+   if(p.slot==0){p.swr=7;p.swk=1;if(bd<9)B.hp-=38}
+   else if(p.slot==1){p.sw=0;push({k:1,x:p.x,z:p.z,vx:ax*32,vz:az*32,s:1,life:1.2,dm:32})}
+   else if(p.slot==2){p.swr=8;p.swk=3;if(bd<10)B.hp-=10;for(const q of P)if(Math.hypot(q.x-p.x,q.z-p.z)<8){if(q.down){q.down=0;q.hp=30;q.inv=2;q.rev=0}else q.hp=Math.min(100,q.hp+40)}}
+   else{p.swr=10;p.swk=2;if(bd<12)B.hp-=42}}
+  p.in.s=0}
+ if(A.length){let n=A[0],bd=1e9;for(const p of A){const d=Math.hypot(p.x-B.x,p.z-B.z);if(d<bd){bd=d;n=p}}
+  if(!B.lock)B.f=Math.atan2(n.z-B.z,n.x-B.x);
+  if(!B.lock&&!B.stop&&bd>5.5){const sp=(3.2+B.ph*1.4)*(B.slow?.55:1);B.x+=(n.x-B.x)/bd*sp*dt;B.z+=(n.z-B.z)/bd*sp*dt;const q=Math.hypot(B.x,B.z);if(q>R-4){B.x*=(R-4)/q;B.z*=(R-4)/q}}}
+ if(B.at){if(B.at(dt)){B.at=null;B.lock=B.stop=B.slow=0;B.cd=Math.max(.6,(B.last>=4?3.2:2.2)-B.ph*.65)}}
+ else{B.cd-=dt;if(B.cd<=0){const pool=B.ph?[0,1,2,3,4,5]:[0,1,2,5];let i;do{i=pool[(Math.random()*pool.length)|0]}while(i==B.last);B.last=i;B.at=ATK[i]()}}
+ for(const e of g.ents){
+  if(e.k<2){e.x+=e.vx*dt;e.z+=e.vz*dt;
+   if(e.k==1){e.life-=dt;if(e.life<=0)e.dead=1;if(Math.hypot(e.x-B.x,e.z-B.z)<3.3){e.dead=1;B.hp-=e.dm}}
+   else{if(Math.hypot(e.x,e.z)>R+10)e.dead=1;for(const p of A)if(Math.hypot(p.x-e.x,p.z-e.z)<1&&hurt(p,e.dm))e.dead=1}}
+  else if(e.k==3){e.r+=e.v*dt;if(e.r>46)e.dead=1;for(const p of A)if(!e.hit[p.slot]&&Math.abs(Math.hypot(p.x-e.x,p.z-e.z)-e.r)<.07*e.r+.6&&hurt(p,22))e.hit[p.slot]=1}
+  else if(e.k==2){e.t+=dt;if(e.t>=e.d){e.dead=1;if(!e.nd)for(const p of A)if(Math.hypot(p.x-e.x,p.z-e.z)<e.r)hurt(p,e.dm||28)}}}
+ g.ents=g.ents.filter(e=>!e.dead);
+ if(B.hp<=0){B.hp=0;g.state='win';g.ents=[]}else if(P.length&&!P.some(p=>!p.down)){g.state='lose';g.ents=[]}}
+function snapshot(){const g=G,B=g.boss;return{t:'s',s:g.state,
+ p:g.pl.map(p=>p.on?[f2(p.x),f2(p.z),Math.round(p.hp),p.down?2:p.roll>0?1:0,p.inv>0?1:0,f2(p.rev),f2(p.fa),f2(p.sw),f2(p.aim),p.swr,p.swk,f2(Math.max(0,p.rcd)/RCD),f2(Math.max(0,p.acd)/ACD),f2(Math.max(0,p.scd)/ROLE[p.slot].cd)]:0),
+ b:[f2(B.x),f2(B.z),B.hp,B.max,f2(B.f),B.ph],
+ e:g.ents.map(e=>e.k==0?[0,f2(e.x),f2(e.z),0,0,e.vx,e.vz]:e.k==1?[1,f2(e.x),f2(e.z),e.s,0,e.vx,e.vz]:e.k==2?[2,e.x,e.z,e.r,f2(e.t/e.d),0,0]:e.k==3?[3,e.x,e.z,f2(e.r),0,0,0]:[4,e.x,e.z,f2(e.a),f2(e.t),0,0])}}
 
-function move(e){tx=e.clientX-cv.getBoundingClientRect().left}
-cv.addEventListener('pointermove',move);
-cv.addEventListener('pointerdown',move);
-ov.addEventListener('pointerdown',e=>{e.stopPropagation();if(!running&&(!card.querySelector('h1').textContent.includes('オーバー')||ov.dataset.ready))start()});
+/* ---------- 通信 ---------- */
+const st=m=>$('st').textContent=m,isHost=()=>mode==='host'||mode==='solo';
+function enter(){$('menu').style.display='none'}
+$('solo').onclick=()=>{mode='solo';initG();startGame();enter()};
+$('host').onclick=()=>{st('部屋を作っています…');tryHost()};
+function tryHost(){const code=String(1000+(Math.random()*9000|0));peer=new Peer('oniou-'+code);
+ peer.on('error',e=>{if(e.type=='unavailable-id')tryHost();else st('接続エラー: '+e.type)});
+ peer.on('open',()=>{mode='host';initG();$('room').innerHTML='部屋コード <b style="font-size:22px">'+code+'</b>';enter()});
+ peer.on('connection',c=>{c.on('open',()=>{const p=G.pl.find(p=>!p.on);
+  if(G.state=='play'||!p){c.send({t:'x',m:G.state=='play'?'戦闘中です。次の回からどうぞ':'満員です'});setTimeout(()=>c.close(),300);return}
+  p.on=true;c.slot=p.slot;conns.push(c);c.send({t:'w',slot:p.slot})});
+  c.on('data',d=>{if(d.t=='i'&&c.slot!=null){const p=G.pl[c.slot];p.in.mx=d.mx;p.in.mz=d.mz;p.in.a=d.a;if(d.r)p.in.r=1;if(d.s)p.in.s=1}});
+  c.on('close',()=>{if(c.slot!=null)G.pl[c.slot].on=false;conns=conns.filter(x=>x!==c)})})}
+$('join').onclick=()=>{const code=$('code').value.trim();if(code.length!=4)return st('4桁のコードを入力してください');st('接続中…');
+ peer=new Peer();peer.on('error',e=>st(e.type=='peer-unavailable'?'部屋が見つかりません':'接続エラー: '+e.type));
+ peer.on('open',()=>{hconn=peer.connect('oniou-'+code,{reliable:false});
+  hconn.on('data',d=>{if(d.t=='w'){myslot=d.slot;mode='client';enter();$('room').textContent='参加中'}else if(d.t=='s'){snap=d;snapT=performance.now()}else if(d.t=='x'){st(d.m);hconn.close()}});
+  hconn.on('close',()=>{if(mode=='client'){mode='menu';$('menu').style.display='flex';st('切断されました')}})})};
+$('go').onclick=()=>{if(isHost())startGame()};
 
-function loop(now){
-if(!running)return;
-const dt=Math.min(0.05,(now-last)/1000);last=now;t+=dt;
-const lvl=1+t/20;
-px+=(tx-px)*Math.min(1,dt*14);
-spawn-=dt;
-if(spawn<=0){const k=pick();items.push({k,x:40+Math.random()*(W-80),y:-40,v:(160+Math.random()*80)*lvl,r:Math.random()*6});spawn=Math.max(0.25,0.8/lvl)}
-const by=H-70;
-for(const it of items){it.y+=it.v*dt;it.r+=dt*2;
- if(!it.done&&it.y>by-30&&it.y<by+30&&Math.abs(it.x-px)<62){it.done=true;
-  if(it.k.bomb){lives--;combo=0;shake=0.3;pops.push({x:it.x,y:by-40,s:'💥',a:1})}
-  else{combo++;const m=1+Math.floor(combo/5);const p=it.k.pts*m;score+=p;pops.push({x:it.x,y:by-40,s:'+'+p+(m>1?' ×'+m:''),a:1})}}
- else if(!it.done&&it.y>H+40){it.done=true;if(!it.k.bomb)combo=0}}
-items=items.filter(i=>!i.done&&i.y<H+60);
-for(const p of pops){p.y-=50*dt;p.a-=dt*1.4}pops=pops.filter(p=>p.a>0);
-if(shake>0)shake-=dt;
-draw(by);
-if(lives<=0){end();return}
-requestAnimationFrame(loop)}
-
-function draw(by){
-ctx.clearRect(0,0,W,H);ctx.save();
-if(shake>0)ctx.translate((Math.random()-.5)*14,(Math.random()-.5)*14);
-ctx.textAlign='center';ctx.textBaseline='middle';
-ctx.font='44px serif';
-for(const it of items){ctx.save();ctx.translate(it.x,it.y);ctx.rotate(Math.sin(it.r)*0.4);ctx.fillText(it.k.e,0,0);ctx.restore()}
-ctx.font='84px serif';ctx.fillText('🧺',px,by+8);
-ctx.font='bold 26px sans-serif';
-for(const p of pops){ctx.globalAlpha=Math.max(0,p.a);ctx.fillStyle='#e8452c';ctx.fillText(p.s,p.x,p.y)}
-ctx.globalAlpha=1;ctx.restore();
-ctx.textAlign='left';ctx.textBaseline='top';ctx.fillStyle=getComputedStyle(document.documentElement).getPropertyValue('--ink')||'#000';
-ctx.font='bold 30px sans-serif';ctx.fillText('スコア '+score,20,16);
-ctx.font='24px sans-serif';ctx.fillText('コンボ '+combo,20,56);
-ctx.textAlign='right';ctx.font='30px serif';ctx.fillText('❤️'.repeat(Math.max(0,lives)),W-20,16)}
-</script>
-</body>
-</html>
+/* ---------- 描画・HUD ---------- */
+function render(dt,now){const s=snap;if(!s)return;const cl=mode==='client',k=cl?1-Math.exp(-dt*22):1,age=cl?Math.min(.1,(now-snapT)/1000):0;
+ s.p.forEach((d,i)=>{const m=pm[i];if(!d){m.visible=false;m.sw.visible=false;return}
+  if(!m.init){m.position.set(d[0],0,d[1]);m.init=1}
+  m.position.x+=(d[0]-m.position.x)*k;m.position.z+=(d[1]-m.position.z)*k;
+  m.visible=!d[4]||(now/60|0)%2==0;m.rotation.y=Math.PI/2-d[6];m.rotation.z=d[3]==2?Math.PI/2:0;m.position.y=d[3]==2?.6:0;m.scale.y=d[3]==1?.6:1;m.mk.visible=i==myslot&&d[3]!=2;
+  const w=m.sw,K=d[10];w.visible=d[7]>0;if(w.visible){w.position.set(m.position.x,.1,m.position.z);w.rotation.y=-d[8];w.sec.visible=K<3;w.circ.visible=K==3;
+   w.sec.scale.set(d[9],d[9]*(K==2?.25:1),1);w.circ.scale.set(d[9],d[9],1);const c=[0xffffff,0xffd84a,0x6ae0ff,0x5aff8a][K];
+   for(const o of[w.sec,w.circ]){o.material.color.setHex(c);o.material.opacity=d[7]*.75}}});
+ const b=s.b;bossG.position.x+=(b[0]-bossG.position.x)*k;bossG.position.z+=(b[1]-bossG.position.z)*k;bossG.rotation.y=Math.PI/2-b[4];
+ bossG.position.y=Math.sin(now/300)*.15;bodyM.material.emissive.setHex(b[5]==2?0x660010:b[5]==1?0x2a0008:0);
+ // TPS: 自分の背後からボスを見るロックオンカメラ
+ const me=pm[myslot],bp=bossG.position;let fx=bp.x-me.position.x,fz=bp.z-me.position.z,l=Math.hypot(fx,fz);
+ if(l>1){fx/=l;fz/=l;const q=Math.min(1,dt*5);cf.x+=(fx-cf.x)*q;cf.z+=(fz-cf.z)*q;const n=Math.hypot(cf.x,cf.z);if(n>.01){cf.x/=n;cf.z/=n}else{cf.x=fx;cf.z=fz}}
+ cam.position.set(me.position.x-cf.x*12,8,me.position.z-cf.z*12);cam.lookAt(me.position.x+cf.x*8,1.5,me.position.z+cf.z*8);
+ const c=[0,0,0,0,0];for(const e of s.e){const t=e[0],i=c[t]++;let m=em[t][i];if(!m){m=mkE[t]();em[t][i]=m;scene.add(m)}m.visible=true;
+  m.position.x=e[1]+e[5]*age;m.position.z=e[2]+e[6]*age;
+  if(t==1)m.material.color.setHex(COL[e[3]]);
+  else if(t==2){m.scale.set(e[3],1,e[3]);m.inner.scale.set(Math.max(.01,e[4]),Math.max(.01,e[4]),1)}
+  else if(t==3)m.scale.set(e[3],e[3],1);
+  else if(t==4){m.rotation.y=-e[3];m.fill.scale.y=5*Math.max(.01,e[4])}}
+ for(let t=0;t<5;t++)for(let i=c[t];i<em[t].length;i++)em[t][i].visible=false;
+ ren.render(scene,cam)}
+let lastH='';
+function hud(){const s=snap;if(!s)return;const b=s.b;$('bossf').style.width=(b[3]?b[2]/b[3]*100:100)+'%';$('bossn').textContent=b[5]==2?'鬼王 ─ 猛攻!':'鬼王';
+ const n=s.p.filter(Boolean).length;
+ const h=s.p.map((d,i)=>d?`<div style="color:${CSS[i]};margin-bottom:6px">P${i+1} ${ROLE[i].n}${i==myslot?' ◀':''}<div class="hp"><i style="width:${d[2]}%;background:${d[2]<30?'#ff3a3a':CSS[i]}"></i></div>${d[3]==2?'<small>倒れた! 近づいて救助 '+Math.round(d[5]/2*100)+'%</small>':''}</div>`:'').join('');
+ if(h!==lastH){$('pl').innerHTML=h;lastH=h}
+ const me=s.p[myslot];if(me){$('c-roll').style.height=me[11]*100+'%';$('c-atk').style.height=me[12]*100+'%';$('c-skill').style.height=me[13]*100+'%'}
+ $('sn').textContent=ROLE[myslot].s;
+ const ms={lobby:`待機中 ${n}/4人`,win:'撃破!!',lose:'全滅…',play:''}[s.s];$('msg').textContent=ms;
+ const g=$('go');g.style.display=isHost()&&s.s!=='play'?'block':'none';g.textContent=s.s=='lobby'?'開始':'もう一度'}
+let last=performance.now(),acc=0;
+function loop(now){requestAnimationFrame(loop);const dt=Math.min(.05,(now-last)/1000);last=now;if(mode==='menu')return;
+ const c=getIn();acc+=dt;
+ if(isHost()){const p=G.pl[0];p.in.mx=c.mx;p.in.mz=c.mz;p.in.a=c.a;if(ctl.r)p.in.r=1;if(ctl.s)p.in.s=1;ctl.r=ctl.s=0;step(dt);snap=snapshot();snapT=now;
+  if(acc>.033){acc=0;const d=snap;for(const q of conns)if(q.open)q.send(d)}}
+ else if(hconn&&hconn.open&&acc>.033){acc=0;hconn.send({t:'i',mx:f2(c.mx),mz:f2(c.mz),a:c.a,r:ctl.r,s:ctl.s});ctl.r=ctl.s=0}
+ render(dt,now);hud()}
+requestAnimationFrame(loop);
+</script></body></html>
