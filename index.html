@@ -39,6 +39,7 @@ select{font:inherit;font-size:15px;padding:8px;margin:4px;border-radius:6px;max-
 #act{right:calc(30px + env(safe-area-inset-right,0px));bottom:calc(30px + env(safe-area-inset-bottom,0px));width:112px;height:112px;background:#2a8ad0aa;font-size:19px;display:none}
 #rw{position:absolute;top:53%;width:100%;text-align:center;font-size:18px;text-shadow:0 2px 6px #000;white-space:pre-line}
 #pl{font-size:17px}.hp{width:210px;height:15px}#boss{height:22px}#bossn{font-size:17px;top:calc(36px + env(safe-area-inset-top,0px))}#rw{font-size:22px}.b small{font-size:14px}
+textarea{user-select:text;-webkit-user-select:text;width:100%;height:90px;font-size:14px;box-sizing:border-box;background:#fff;color:#000;border-radius:6px}
 </style></head><body>
 <div id="hud">
  <div id="boss"><div id="bossf"></div></div><div id="bossn">鬼王</div>
@@ -161,7 +162,7 @@ EQP=[['🗡️鬼の太刀',0,[5,0,0],'',[[0,6]]],['🥋鬼角の鎧',1,[0,5,0],
 const DS=()=>({xp:0,lv:1,pt:0,st:[0,0,0],mat:Array(9).fill(0),coin:0,own:[1,0,0,0,0],eq:{},ew:-1,ea:-1,c:0,sp:0,it:-1,items:[0,0,0,0]});
 let S;try{S={...DS(),...JSON.parse(localStorage.getItem('oniou2')||'{}')}}catch(e){S=DS()}
 const sv=()=>{try{localStorage.setItem('oniou2',JSON.stringify(S))}catch(e){}};
-let pk=null,rwT='',myLd=null,gres='',near=null;const pn=$('pn');
+let svTxt='',svMsg='',pk=null,rwT='',myLd=null,gres='',near=null;const pn=$('pn');
 const cst=(i,l)=>EQP[i][4].map(([m,c])=>[m,c*l]),can=c=>c.every(([m,n])=>S.mat[m]>=n),ct=c=>c.map(([m,n])=>`<span style="color:${S.mat[m]>=n?'#9f9':'#f99'}">${MN[m]}×${n}(${S.mat[m]})</span>`).join('　'),nx=()=>40+S.lv*30;
 function fin(){const t=[0,1,2].map(i=>CH[S.c].b[i]+S.st[i]),fx=[];for(const id of[S.ew,S.ea]){if(id<0||S.eq[id]==null)continue;const q=EQP[id],m=1+.15*S.eq[id];q[2].forEach((v,i)=>t[i]+=Math.round(v*m));if(q[3])fx.push(q[3])}return{t,fx}}
 function mkLd(){const f=fin(),n=S.it>=0?Math.min(3,S.items[S.it]):0;return{c:S.c,sp:S.sp,st:f.t,fx:f.fx,it:n?S.it:-1,n}}
@@ -175,18 +176,21 @@ m:(b,t)=>{P();if(isHost())startMission(b,t);else if(hconn&&hconn.open)hconn.send
 lv:()=>{if(S.xp>=nx()){S.xp-=nx();S.lv++;S.pt+=2;sv();P('lv')}},st:i=>{if(S.pt>0){S.pt--;S.st[i]++;sv();P('lv')}},
 mk:i=>{const c=cst(i,1);if(can(c)&&S.eq[i]==null){c.forEach(([m,n])=>S.mat[m]-=n);S.eq[i]=0;sv();P('forge')}},
 up:i=>{const c=cst(i,S.eq[i]+2);if(S.eq[i]<5&&can(c)){c.forEach(([m,n])=>S.mat[m]-=n);S.eq[i]++;sv();P('forge')}},
+ex:()=>{svTxt=btoa(unescape(encodeURIComponent(JSON.stringify(S))));svMsg='書き出しました。テキスト欄を全選択してコピーしてください';try{navigator.clipboard.writeText(svTxt).then(()=>{svMsg='コピーしました(テキスト欄からもコピーできます)';P('menu')}).catch(()=>{})}catch(e){}P('menu')},
+im:()=>{try{const o=JSON.parse(decodeURIComponent(escape(atob($('svt').value.trim())))),d=DS(),n={...d};for(const k in d)if(o[k]!=null)n[k]=o[k];
+ if(!Array.isArray(n.mat)||n.mat.length!=9||!Array.isArray(n.own)||n.own.length!=5||!Array.isArray(n.st)||n.st.length!=3||!Array.isArray(n.items)||n.items.length!=4||typeof n.eq!='object')throw 0;S=n;sv();sendLd();svTxt='';svMsg='読み込みました!'}catch(e){svMsg='読み込めませんでした。コードを確認してください'}P('menu')},
 g:n=>{if(S.coin>=10*n){S.coin-=10*n;gres=Array.from({length:n},pull).join(' / ');sv();P('gacha')}}};
 function P(k){pk=k||null;if(!k){pn.style.display='none';sendLd();return}pn.style.display='block';
  const B=(t,f,x)=>`<button class="sm" onclick="${f}"${x?' disabled':''}>${t}</button>`,f=fin();let h=`<div style="float:right">${B('閉じる','P()')}</div>`;
  const stt=`<div class=d>Lv${S.lv} ・ 💪${f.t[0]} 🛡️${f.t[1]} 💨${f.t[2]} ・ 🪙${S.coin}</div>`;
  if(k=='menu'){h+=`<h2>メニュー(基地)</h2>${stt}<b>キャラクター</b><br>${S.own.map((o,i)=>o?B(CH[i].n+(S.c==i?' ✔':''),`F.c(${i})`):'').join('')}<div class=d>${CH[S.c].ps} ／ 必殺技「${CH[S.c].u}」: ${CH[S.c].ud}</div>`;
   for(const[s,l,key]of[[0,'武器','ew'],[1,'防具','ea']])h+=`<b>${l}</b><br>`+B('なし'+(S[key]<0?' ✔':''),`F.e(${s},-1)`)+EQP.map((q,i)=>S.eq[i]!=null&&q[1]==s?B(q[0]+'+'+S.eq[i]+(S[key]==i?' ✔':''),`F.e(${s},${i})`):'').join('')+`<div class=d>${S[key]>=0&&EQP[S[key]][3]?FXD[EQP[S[key]][3]]:''}</div>`;
-  h+=`<b>ボタン技</b><br>`+SP.map((q,i)=>B(q.n+(S.sp==i?' ✔':''),`F.s(${i})`)).join('')+`<div class=d>${SP[S.sp].d}(CT${SP[S.sp].cd}秒)</div><b>持ち込みアイテム(最大3個)</b><br>`+B('なし'+(S.it<0?' ✔':''),'F.i(-1)')+IT.map((q,i)=>S.items[i]?B(q.n+'×'+S.items[i]+(S.it==i?' ✔':''),`F.i(${i})`):'').join('')+`<div class=d>${S.it>=0?IT[S.it].d:''}</div>`}
+  h+=`<b>ボタン技</b><br>`+SP.map((q,i)=>B(q.n+(S.sp==i?' ✔':''),`F.s(${i})`)).join('')+`<div class=d>${SP[S.sp].d}(CT${SP[S.sp].cd}秒)</div><b>持ち込みアイテム(最大3個)</b><br>`+B('なし'+(S.it<0?' ✔':''),'F.i(-1)')+IT.map((q,i)=>S.items[i]?B(q.n+'×'+S.items[i]+(S.it==i?' ✔':''),`F.i(${i})`):'').join('')+`<div class=d>${S.it>=0?IT[S.it].d:''}</div><hr><b>💾セーブデータ</b><br>${B('書き出し(コピー)','F.ex()')}${B('貼り付けたコードを読み込む','F.im()')}<div class=d>${svMsg}</div><textarea id=svt placeholder="ここにセーブコードを貼り付け">${svTxt}</textarea>`}
  else if(k=='mission'){h+=`<h2>ミッション選択</h2><div class=d>${isHost()?'':'ホストの部屋で出撃を依頼します。'}基地にいる全員で出撃します。</div>`+BOSS.map((q,b)=>`<div style="margin:8px 0"><b>${q.n}</b><br>`+TN.map((t,i)=>B(t+'モード',`F.m(${b},${i})`)).join('')+'</div>').join('')+`<div class=d>極モードは被ダメージが非常に大きく、生身ではほぼ一撃です。まもりを上げて挑もう。</div>`}
  else if(k=='lv'){h+=`<h2>レベルアップ</h2>${stt}<div>⭐XP ${S.xp} ／ 次のレベルまで ${nx()}　残りポイント ${S.pt}</div><div class=d>💪ちから=与ダメージUP　🛡️まもり=被ダメージ軽減・体力UP　💨すばやさ=移動・攻撃速度UP</div>${B('レベルアップ(XP'+nx()+')','F.lv()',S.xp<nx())}<br>`+['💪ちから','🛡️まもり','💨すばやさ'].map((n,i)=>`<div class=it><span>${n} <b>${f.t[i]}</b> <small class=d>(振り分け+${S.st[i]})</small></span>`+B('＋1',`F.st(${i})`,!S.pt)+'</div>').join('')+`<div class=d>レベルが上がるとポイントを2もらえます</div>`}
  else if(k=='forge'){h+=`<h2>鍛冶場</h2><div class=d>${MN.map((n,i)=>S.mat[i]?n+'×'+S.mat[i]:'').filter(Boolean).join(' ')||'素材なし'}</div><b>装備を作る</b><br>`+EQP.map((q,i)=>{if(S.eq[i]!=null)return'';const c=cst(i,1);return`<div class=it><span>${q[0]} <small class=d>${q[1]?'防具':'武器'}</small><br>💪${q[2][0]} 🛡️${q[2][1]} 💨${q[2][2]}${q[3]?'<br>✨'+FXD[q[3]]:''}<br><span class=d>${ct(c)}</span></span>${B('作る',`F.mk(${i})`,!can(c))}</div>`}).join('')+`<b>強化(最大+5)</b><br>`+EQP.map((q,i)=>{if(S.eq[i]==null)return'';const l=S.eq[i],c=cst(i,l+2);return`<div class=it><span>${q[0]} +${l}`+(l<5?`<br><span class=d>${ct(c)}</span></span>${B('強化',`F.up(${i})`,!can(c))}`:' MAX</span>')+'</div>'}).join('')}
  else if(k=='gacha'){h+=`<h2>ガシャ</h2><div>🪙 ${S.coin}</div>${B('1回(10コイン)','F.g(1)',S.coin<10)}${B('10回(100コイン)','F.g(10)',S.coin<100)}<div class=d>新キャラクターや戦闘中に使えるアイテムが出ます。コインはボス撃破時にたまに落ちます。</div><div>${gres}</div>`}
- pn.innerHTML=h}
+ const sc=pn.scrollTop;pn.innerHTML=h;pn.scrollTop=sc}
 function hit(p,n,fc){const B=G.boss,m=(1+p.s*.06)*(p.buff>0?1.5:1)*(p.h1?3:1)*(p.nr?1.35:1),cr=fc||Math.random()<.1+p.cr,d=Math.round(n*m*(cr?1.5+p.cd:1));B.hp-=d;if(!p.ul)p.ug=Math.min(100,p.ug+n*.2);
  G.ev.push({id:++G.eid,t:G.t,x:B.x,z:B.z,a:d,k:cr?1:0})}
 function initG(){G={state:'base',t:0,tier:0,ents:[],bt:0,ev:[],eid:0,boss:{x:0,z:0,y:0,hp:1,max:1,f:0,ph:0,cd:3,at:null,last:-1,lock:0,stop:0,slow:0},
