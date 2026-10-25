@@ -171,11 +171,13 @@ const mkE=[
  ()=>{const m=M(new THREE.SphereGeometry(.7,10,8),0xff5a3a,{emissive:0x701000});m.position.y=.8;return m}];
 const em=[[],[],[],[],[],[]];
 
-/* ---------- 3Dアバター(assets/akatsuki.glb) ---------- */
-// 設定: file=glbの場所(拡張子なし) / scale=見た目の大きさ / tex=テクスチャの縮小サイズ / root=体の中心(モデル座標)
-// slash=[クリップ内の開始秒,終了秒,ゲーム内で再生する秒数] / idleT=待機ポーズに使う秒 / extra=追加で探すアニメの名前
-const AVC={file:'assets/akatsuki',scale:2.2,tex:1024,root:[.2664,.0196],slash:[1.2,2.45,.36],idleT:.3,extra:['idle','run','roll','down']};
-const AV={ok:false,clips:{},tpl:null},_ao=new Float32Array(4);
+/* ---------- 3Dキャラ(assets/*.glb) ---------- */
+// file=glbの場所(拡張子なし) / scale=大きさ / root=体の中心(モデル座標x,z) / act=攻撃に使うアニメ名 / seg=[開始秒,終了秒,ゲーム内で再生する秒数]
+// idleT=待機ポーズに使う秒 / extra=追加で探すアニメ(file_名前.glb) / run=走り(歩き)アニメ名 / leg,arm=走りの振り幅 / pf=足の回転の速さ[基本,速度に比例]
+const AVTEX=1024;
+const AV={ok:false,clips:{},tpl:null,cfg:{file:'assets/akatsuki',scale:2.2,root:[.2664,.0196],act:'slash',seg:[1.2,2.45,.36],idleT:.3,extra:['idle','run','roll','down'],run:'run',leg:.75,arm:.55,pf:[5,1],rs:6}};
+const OV={ok:false,clips:{},tpl:null,a:null,cfg:{file:'assets/oni_king',scale:7.5,root:[-.2098,-.0315],act:'chop',seg:[.9,3.3,2.1],idleT:.3,extra:['idle','walk','down'],run:'walk',leg:.5,arm:.35,pf:[3,.8],rs:4}};
+const _ao=new Float32Array(4);
 function glbParse(buf){const dv=new DataView(buf);if(dv.getUint32(0,true)!==0x46546C67)throw new Error('not glb');let o=12,J=null,B=null;
  while(o<buf.byteLength){const l=dv.getUint32(o,true),t=dv.getUint32(o+4,true);if(t===0x4E4F534A)J=JSON.parse(new TextDecoder().decode(new Uint8Array(buf,o+8,l)));else if(t===0x004E4942)B=buf.slice(o+8,o+8+l);o+=8+l}
  return{J,B}}
@@ -204,54 +206,67 @@ function avPose(a,L){const o=_ao;for(const b of a.list){let px=0,py=0,pz=0,pw=0,
   if(bt.rotation){trk(bt.rotation,t,o);const s=qn&&(qx*o[0]+qy*o[1]+qz*o[2]+qw*o[3])<0?-1:1;qx+=o[0]*w*s;qy+=o[1]*w*s;qz+=o[2]*w*s;qw+=o[3]*w*s;qn+=w}}
  if(pw)b.position.set(px/pw,py/pw,pz/pw);if(sw)b.scale.set(sx/sw,sy/sw,sz/sw);
  if(qn){const l=1/(Math.hypot(qx,qy,qz,qw)||1);b.quaternion.set(qx*l,qy*l,qz*l,qw*l)}}}
-const _q1=new THREE.Quaternion(),_q2=new THREE.Quaternion(),_q3=new THREE.Quaternion(),_ax=new THREE.Vector3();
+const _q1=new THREE.Quaternion(),_q2=new THREE.Quaternion(),_q3=new THREE.Quaternion();
 // 骨をモデルの左右軸まわりに回す(+で前へ振る)。親のワールド回転を考慮して局所回転に直す
 function avSw(a,n,ang){const b=a.bones[n];if(!b||!b.parent||!ang)return;b.parent.getWorldQuaternion(_q1);_q2.setFromAxisAngle(a.axis,ang);_q3.copy(_q1).invert().multiply(_q2).multiply(_q1);b.quaternion.premultiply(_q3)}
 function glbTex(g,idx,srgb){return new Promise((ok,ng)=>{const t=g.J.textures[idx],im=g.J.images[t.source],bv=g.J.bufferViews[im.bufferView],
  u=URL.createObjectURL(new Blob([new Uint8Array(g.B,bv.byteOffset||0,bv.byteLength)],{type:im.mimeType||'image/png'})),i=new Image();
- i.onload=()=>{const f=Math.min(1,AVC.tex/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(i.width*f));c.height=Math.max(1,Math.round(i.height*f));c.getContext('2d').drawImage(i,0,0,c.width,c.height);URL.revokeObjectURL(u);
+ i.onload=()=>{const f=Math.min(1,AVTEX/Math.max(i.width,i.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(i.width*f));c.height=Math.max(1,Math.round(i.height*f));c.getContext('2d').drawImage(i,0,0,c.width,c.height);URL.revokeObjectURL(u);
   const x=new THREE.CanvasTexture(c);x.flipY=false;if(srgb)x.colorSpace=THREE.SRGBColorSpace;x.anisotropy=4;ok(x)};i.onerror=()=>ng(new Error('texture'));i.src=u})}
 async function avFetch(u){const r=await fetch(u);if(!r.ok)throw new Error(r.status);return glbParse(await r.arrayBuffer())}
-async function avLoad(){try{
- const g=await avFetch(AVC.file+'.glb'),J=g.J,sk=J.skins[0],mi=J.nodes.findIndex(n=>n.mesh!=null&&n.skin!=null),pr=J.meshes[J.nodes[mi].mesh].primitives[0],A=pr.attributes,geo=new THREE.BufferGeometry();
+async function avLoad(K){const cf=K.cfg;try{
+ const g=await avFetch(cf.file+'.glb'),J=g.J,sk=J.skins[0],mi=J.nodes.findIndex(n=>n.mesh!=null&&n.skin!=null),pr=J.meshes[J.nodes[mi].mesh].primitives[0],A=pr.attributes,geo=new THREE.BufferGeometry();
  geo.setAttribute('position',new THREE.BufferAttribute(glbAcc(g,A.POSITION),3));geo.setAttribute('normal',new THREE.BufferAttribute(glbAcc(g,A.NORMAL),3));geo.setAttribute('uv',new THREE.BufferAttribute(glbAcc(g,A.TEXCOORD_0),2));
  geo.setAttribute('skinIndex',new THREE.BufferAttribute(glbAcc(g,A.JOINTS_0),4));geo.setAttribute('skinWeight',new THREE.BufferAttribute(glbAcc(g,A.WEIGHTS_0),4));geo.setIndex(new THREE.BufferAttribute(glbAcc(g,pr.indices),1));
  const mt=J.materials[pr.material||0],pb=mt.pbrMetallicRoughness||{},mat=new THREE.MeshStandardMaterial({roughness:1,metalness:.1,side:THREE.DoubleSide});
  const tx=await Promise.all([pb.baseColorTexture?glbTex(g,pb.baseColorTexture.index,true):null,mt.normalTexture?glbTex(g,mt.normalTexture.index,false):null,pb.metallicRoughnessTexture?glbTex(g,pb.metallicRoughnessTexture.index,false):null]);
  if(tx[0])mat.map=tx[0];if(tx[1])mat.normalMap=tx[1];if(tx[2])mat.roughnessMap=tx[2];
  const ib=glbAcc(g,sk.inverseBindMatrices),isJ={};sk.joints.forEach(j=>isJ[j]=1);
- AV.tpl={J,geo,mat,mi,joints:sk.joints,ib,isJ};
- for(const c of glbClips(g))AV.clips[c.name]=c;
- for(const n of AVC.extra)try{const e=await avFetch(AVC.file+'_'+n+'.glb'),c=glbClips(e)[0];if(c)AV.clips[n]=c}catch(x){}
- AV.ok=true;console.log('avatar ready',Object.keys(AV.clips).join(','))}catch(e){console.warn('avatar load failed(カプセル表示のまま遊べます)',e)}}
-function avBuild(){const T=AV.tpl,J=T.J,S=AVC.scale,nodes=J.nodes.map((n,i)=>{const o=i===T.mi?new THREE.SkinnedMesh(T.geo,T.mat):T.isJ[i]?new THREE.Bone():new THREE.Object3D();o.name=n.name||'';
+ K.tpl={J,geo,mat,mi,joints:sk.joints,ib,isJ};
+ for(const c of glbClips(g))K.clips[c.name]=c;
+ for(const n of cf.extra)try{const e=await avFetch(cf.file+'_'+n+'.glb'),c=glbClips(e)[0];if(c)K.clips[n]=c}catch(x){}
+ K.ok=true;console.log('3D ready',cf.file,Object.keys(K.clips).join(','))}catch(e){console.warn('3Dモデルを読めませんでした(今までの表示のまま遊べます)',cf.file,e)}}
+function avBuild(K){const T=K.tpl,J=T.J,S=K.cfg.scale,R=K.cfg.root,nodes=J.nodes.map((n,i)=>{const o=i===T.mi?new THREE.SkinnedMesh(T.geo,T.mat):T.isJ[i]?new THREE.Bone():new THREE.Object3D();o.name=n.name||'';
   if(n.translation)o.position.fromArray(n.translation);if(n.rotation)o.quaternion.fromArray(n.rotation);if(n.scale)o.scale.fromArray(n.scale);return o}),mdl=new THREE.Group();
  J.nodes.forEach((n,i)=>(n.children||[]).forEach(c=>nodes[i].add(nodes[c])));J.scenes[0].nodes.forEach(r=>mdl.add(nodes[r]));
  const list=T.joints.map(j=>nodes[j]),bones={};for(const b of list)bones[b.name]=b;
  const inv=list.map((b,i)=>new THREE.Matrix4().fromArray(T.ib,i*16)),mesh=nodes[T.mi];mdl.updateMatrixWorld(true);mesh.frustumCulled=false;mesh.bind(new THREE.Skeleton(list,inv),mesh.matrixWorld);
  // モデルは+X向き。ゲームは+Z向きなので回して、体の中心を足元の真ん中に合わせる
- const H=S*.45,pv=new THREE.Group();mdl.rotation.y=-Math.PI/2;mdl.scale.setScalar(S);mdl.position.set(AVC.root[1]*S,-H,-AVC.root[0]*S);pv.add(mdl);pv.position.y=H;
- return{pv,mdl,list,bones,H,axis:new THREE.Vector3(0,0,1),ph:0,spd:0,ru:0,rl:0,sl:-1,pw:0,px:null,pz:0}}
+ const H=S*.45,pv=new THREE.Group();mdl.rotation.y=-Math.PI/2;mdl.scale.setScalar(S);mdl.position.set(R[1]*S,-H,-R[0]*S);pv.add(mdl);pv.position.y=H;
+ return{pv,mdl,list,bones,H,axis:new THREE.Vector3(0,0,1),ph:0,spd:0,ru:0,rl:0,sl:-1}}
+// 1体ぶんの動き。o={spd:速さ, trig:攻撃開始, roll:回避中, down:ダウン中}
+function avStep(K,a,dt,now,o){const cf=K.cfg,C=K.clips,AC=C[cf.act],sg=cf.seg,S=cf.scale;
+ a.spd+=(o.spd-a.spd)*Math.min(1,dt*10);
+ const rolling=!!o.roll,dn=!!o.down,run=!dn&&!rolling&&a.spd>1.5?Math.min(1,a.spd/cf.rs):0;a.ru+=(run-a.ru)*Math.min(1,dt*12);a.ph+=dt*(cf.pf[0]+a.spd*cf.pf[1]);
+ if(o.trig&&!dn)a.sl=0;
+ let w=0,ts=0;if(a.sl>=0){a.sl+=dt;const u=a.sl/sg[2];if(u>=1||!AC)a.sl=-1;else{w=Math.min(1,u*8)*Math.min(1,(1-u)*4);ts=sg[0]+u*(sg[1]-sg[0])}}
+ a.rl=rolling?a.rl+dt*20:0;
+ const RC=C[cf.run];let bc=C.idle,bt=C.idle?(now/1000)%C.idle.dur:0;
+ if(rolling&&C.roll){bc=C.roll;bt=Math.min(C.roll.dur,a.rl/20*(C.roll.dur/.35))}else if(dn&&C.down){bc=C.down;bt=C.down.dur}else if(run>.3&&RC){bc=RC;bt=(a.ph/6.283*RC.dur)%RC.dur}
+ else if(!bc&&AC){bc=AC;bt=cf.idleT}
+ a.pv.rotation.x=.14*a.ru+(rolling&&!C.roll?a.rl:0);a.pv.position.y=a.H+Math.abs(Math.sin(a.ph))*S*.045*a.ru+Math.sin(now/450)*S*.005;
+ if(bc)avPose(a,w>0?[[bc,bt,1-w],[AC,ts,w]]:[[bc,bt,1]]);
+ const amp=(RC&&run>.3)?0:a.ru*(1-w);
+ if(amp>.02){a.mdl.getWorldQuaternion(_q1);a.axis.set(0,0,1).applyQuaternion(_q1);const s=Math.sin(a.ph),c=Math.cos(a.ph),L=cf.leg*amp,Ar=cf.arm*amp;
+  avSw(a,'L_Thigh',L*s);avSw(a,'R_Thigh',-L*s);avSw(a,'L_Calf',-amp*(.15+.7*Math.max(0,c)));avSw(a,'R_Calf',-amp*(.15+.7*Math.max(0,-c)));
+  avSw(a,'L_Upperarm',-Ar*s);avSw(a,'R_Upperarm',Ar*s)}}
+// プレイヤー: m=プレイヤーのGroup, d=スナップショット
 function avPlayer(m,d,i,dt,now,on){
  if(!m.cap)m.cap=[m.children[0],m.children[1],m.children[2]];
- let a=m.av;if(on&&!a){a=m.av=avBuild();m.add(a.pv);a.ring=flat(new THREE.RingGeometry(.95,1.2,32),COL[i],.9);m.add(a.ring)}
+ let a=m.av;if(on&&!a){a=m.av=avBuild(AV);m.add(a.pv);a.ring=flat(new THREE.RingGeometry(.95,1.2,32),COL[i],.9);m.add(a.ring);a.pw=0;a.px=null;a.pz=0}
  for(const c of m.cap)c.visible=!on;if(!a)return;a.pv.visible=a.ring.visible=on;if(!on)return;
- const mp=m.position,sp=a.px==null?0:Math.min(14,Math.hypot(mp.x-a.px,mp.z-a.pz)/Math.max(dt,.001));a.px=mp.x;a.pz=mp.z;a.spd+=(sp-a.spd)*Math.min(1,dt*10);
- const dn=d[3]==2,rolling=d[3]==1,run=!dn&&!rolling&&a.spd>1.5?Math.min(1,a.spd/6):0;a.ru+=(run-a.ru)*Math.min(1,dt*12);a.ph+=dt*(5+a.spd);
- if(d[7]>a.pw+.25&&!dn)a.sl=0;a.pw=d[7];
- const C=AV.clips,SL=C.slash,SD=AVC.slash;let w=0,ts=0;
- if(a.sl>=0){a.sl+=dt;const u=a.sl/SD[2];if(u>=1||!SL)a.sl=-1;else{w=Math.min(1,u*8)*Math.min(1,(1-u)*4);ts=SD[0]+u*(SD[1]-SD[0])}}
- a.rl=rolling?a.rl+dt*20:0;
- let bc=C.idle,bt=C.idle?(now/1000)%C.idle.dur:0;
- if(rolling&&C.roll){bc=C.roll;bt=Math.min(C.roll.dur,a.rl/20*(C.roll.dur/.35))}else if(dn&&C.down){bc=C.down;bt=C.down.dur}else if(run>.3&&C.run){bc=C.run;bt=(a.ph/6.283*C.run.dur)%C.run.dur}
- else if(!bc&&SL){bc=SL;bt=AVC.idleT}
- a.pv.rotation.x=.14*a.ru+(rolling&&!C.roll?a.rl:0);a.pv.position.y=a.H+Math.abs(Math.sin(a.ph))*.1*a.ru+Math.sin(now/450)*.01;
- if(bc){avPose(a,w>0?[[bc,bt,1-w],[SL,ts,w]]:[[bc,bt,1]])}
- const own=!(C.run&&run>.3),amp=own?a.ru*(1-w):0;
- if(amp>.02){a.mdl.getWorldQuaternion(_q1);a.axis.set(0,0,1).applyQuaternion(_q1);const s=Math.sin(a.ph),c=Math.cos(a.ph);
-  avSw(a,'L_Thigh',.75*amp*s);avSw(a,'R_Thigh',-.75*amp*s);avSw(a,'L_Calf',-amp*(.15+.7*Math.max(0,c)));avSw(a,'R_Calf',-amp*(.15+.7*Math.max(0,-c)));
-  avSw(a,'L_Upperarm',-.55*amp*s);avSw(a,'R_Upperarm',.55*amp*s)}}
-avLoad();
+ const mp=m.position,sp=a.px==null?0:Math.min(14,Math.hypot(mp.x-a.px,mp.z-a.pz)/Math.max(dt,.001));a.px=mp.x;a.pz=mp.z;
+ const trig=d[7]>a.pw+.25;a.pw=d[7];
+ avStep(AV,a,dt,now,{spd:sp,trig,roll:d[3]==1,down:d[3]==2})}
+// ボス(鬼王): bg=ボスのGroup, b=スナップショットのボス配列(b[10]=今の攻撃番号, b[5]=段階)。表示できたらtrueを返す
+function avBoss(bg,b,dt,now,show){const K=OV;if(!K.ok)return false;
+ let a=K.a;if(!a){a=K.a=avBuild(K);bg.add(a.pv);a.pc=-1;a.px=null;a.pz=0}
+ a.pv.visible=show;if(!show)return true;
+ const mp=bg.position,sp=a.px==null?0:Math.min(14,Math.hypot(mp.x-a.px,mp.z-a.pz)/Math.max(dt,.001));a.px=mp.x;a.pz=mp.z;
+ const cur=b[10],trig=cur>=0&&cur!==a.pc;a.pc=cur;
+ K.tpl.mat.emissive.setHex([0,0x2a0008,0x660010][b[5]]||0);
+ avStep(K,a,dt,now,{spd:sp,trig,roll:false,down:false});return true}
+avLoad(AV);avLoad(OV);
 
 /* ---------- 入力 ---------- */
 const keys={},stk={x:0,y:0},ctl={r:0,atk:0,s:0,u:0,i:0},cf={x:0,z:-1};let jid=null,jo=null;
@@ -517,7 +532,7 @@ function render(dt,now){const s=snap;if(!s)return;updEmb(dt);const bs=s.s=='base
    w.sec.scale.set(d[9],d[9]*(K==2?.25:1),1);w.circ.scale.set(d[9],d[9],1);const c=[0xffffff,0xffd84a,0x6ae0ff,0x5aff8a][K];
    for(const o of[w.sec,w.circ]){o.material.color.setHex(c);o.material.opacity=d[7]*.75}}});
  const b=s.b;bossG.position.x+=(b[0]-bossG.position.x)*k;bossG.position.z+=(b[1]-bossG.position.z)*k;bossG.rotation.y=Math.PI/2-b[4];
- bossG.position.y=b[6]+Math.sin(now/300)*.15;mods.forEach((m,i)=>m.visible=i==b[7]);bossX.forEach((c,i)=>{const q=s.bs&&s.bs[i+1];c.visible=!!q&&q[2]>0&&!bs;if(q){c.position.set(q[0],q[6]+Math.sin(now/300)*.15,q[1]);c.rotation.y=Math.PI/2-q[4];BX[i].forEach((m,k)=>m.visible=k==q[7])}});bodies[b[7]].material.emissive.setHex(EM[b[7]][b[5]]);
+ bossG.position.y=b[6]+Math.sin(now/300)*.15;mods.forEach((m,i)=>m.visible=i==b[7]);bossX.forEach((c,i)=>{const q=s.bs&&s.bs[i+1];c.visible=!!q&&q[2]>0&&!bs;if(q){c.position.set(q[0],q[6]+Math.sin(now/300)*.15,q[1]);c.rotation.y=Math.PI/2-q[4];BX[i].forEach((m,k)=>m.visible=k==q[7])}});bodies[b[7]].material.emissive.setHex(EM[b[7]][b[5]]);const oav=OV.ok&&!bs&&b[7]==0;avBoss(bossG,b,dt,now,oav);if(oav)m0.visible=false;
  for(const v of s.ev||[])if(v[0]>lastEv){lastEv=v[0];showDmg(v[1],v[2],v[3],v[4])}
  for(const m of DN)if(m.visible){m.life-=dt;m.position.y+=dt*2.2;m.material.opacity=Math.min(1,m.life*2.5);if(m.life<=0)m.visible=false}
  // TPS: 自分の背後からボスを見るロックオンカメラ
